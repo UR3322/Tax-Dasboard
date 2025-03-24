@@ -1,68 +1,85 @@
 import streamlit as st
+import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
+import uuid
+import os
 
-# Title and Image
-st.title("🏦 Financial Dashboard")
-st.image("https://media.gettyimages.com/id/1925354468/photo/tax-word-written-on-an-office-table.jpg?s=612x612&w=gi&k=20&c=YDZS3PAmhm3uWj4WvCGitqClGqGCYBbYDRK7JOOll10=", width=400)
+# CSV File Path
+CSV_FILE = "customer_data.csv"
 
-# User Input
-salary = st.number_input("Enter your Annual Salary ($)", min_value=0, value=50000, step=1000)
-deductions = st.number_input("Enter Deductions ($)", min_value=0, value=5000, step=500)
+# Load existing data or create a new DataFrame
+def load_data():
+    if os.path.exists(CSV_FILE):
+        return pd.read_csv(CSV_FILE)
+    else:
+        return pd.DataFrame(columns=["Customer ID", "Name", "Salary", "Deductions", "Tax Payable", "Net Salary"])
 
-# Tax Brackets
-brackets = {0: 0.10, 10000: 0.12, 40000: 0.22, 85000: 0.24, 160000: 0.32, 210000: 0.35, 530000: 0.37}
+# Save data to CSV
+def save_data(data):
+    data.to_csv(CSV_FILE, index=False)
 
+# Tax Calculation Function
 def calculate_tax(income):
+    tax_brackets = {
+        0: 0.10, 10000: 0.12, 40000: 0.22, 85000: 0.24,
+        160000: 0.32, 210000: 0.35, 530000: 0.37
+    }
     tax = 0
     prev_bracket = 0
-    for bracket, rate in brackets.items():
+    for bracket, rate in tax_brackets.items():
         if income > bracket:
             tax += (min(income, bracket) - prev_bracket) * rate
             prev_bracket = bracket
     return tax
 
-# Calculations
-net_income = max(0, salary - deductions)
-tax = calculate_tax(net_income)
-net_salary = salary - tax
+# Dashboard UI
+st.title("🏦 Tax Estimator Dashboard")
+st.image("https://media.gettyimages.com/id/1925354468/photo/tax-word-written-on-an-office-table.jpg?s=612x612&w=gi&k=20&c=YDZS3PAmhm3uWj4WvCGitqClGqGCYBbYDRK7JOOll10=", width=300)
 
-# Display Financial Summary
-st.subheader("📊 Tax Breakdown")
-st.write(f"**Annual Salary:** ${salary:,.2f}")
-st.write(f"**Deductions:** ${deductions:,.2f}")
-st.write(f"**Tax Payable:** ${tax:,.2f}")
-st.write(f"**Net Salary After Tax:** ${net_salary:,.2f}")
+# Customer Info
+name = st.text_input("Enter Your Name")
+salary = st.number_input("Enter Your Annual Salary ($)", min_value=0, value=50000, step=1000)
+deductions = st.number_input("Enter Deductions ($)", min_value=0, value=5000, step=500)
 
-# Pie Chart for Tax Breakdown
-fig1, ax1 = plt.subplots()
-labels = ['Tax Payable', 'Net Salary']
-sizes = [tax, net_salary]
-colors = ['red', 'green']
-ax1.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
-st.pyplot(fig1)
+if st.button("Calculate Tax"):
+    net_income = max(0, salary - deductions)
+    tax = calculate_tax(net_income)
+    net_salary = salary - tax
+    customer_id = str(uuid.uuid4())[:8]  # Generate a unique ID
 
-# Line Graph for Salary Growth Projection
-st.subheader("📈 Salary Growth Projection")
-years = np.arange(1, 11)
-growth_rate = 0.05  # 5% annual increase
-future_salaries = salary * (1 + growth_rate) ** years
+    # Load and update data
+    data = load_data()
+    new_entry = pd.DataFrame({
+        "Customer ID": [customer_id], "Name": [name], "Salary": [salary],
+        "Deductions": [deductions], "Tax Payable": [tax], "Net Salary": [net_salary]
+    })
+    data = pd.concat([data, new_entry], ignore_index=True)
+    save_data(data)
+    
+    # Display Results
+    st.subheader("📊 Tax Breakdown")
+    st.write(f"**Customer ID:** {customer_id}")
+    st.write(f"**Annual Salary:** ${salary:,.2f}")
+    st.write(f"**Deductions:** ${deductions:,.2f}")
+    st.write(f"**Tax Payable:** ${tax:,.2f}")
+    st.write(f"**Net Salary After Tax:** ${net_salary:,.2f}")
 
-fig2, ax2 = plt.subplots()
-ax2.plot(years, future_salaries, marker='o', linestyle='-', color='blue')
-ax2.set_xlabel("Years")
-ax2.set_ylabel("Projected Salary ($)")
-ax2.set_title("Projected Salary Growth Over 10 Years")
-st.pyplot(fig2)
+    # Graph
+    fig, ax = plt.subplots()
+    labels = ['Tax Payable', 'Net Salary']
+    sizes = [tax, net_salary]
+    colors = ['red', 'green']
+    ax.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
+    st.pyplot(fig)
 
-# Bar Chart for Tax Across Different Income Levels
-st.subheader("📊 Tax Paid Across Different Incomes")
-income_levels = [30000, 60000, 90000, 120000, 150000]
-taxes_paid = [calculate_tax(income) for income in income_levels]
-
-fig3, ax3 = plt.subplots()
-ax3.bar(income_levels, taxes_paid, color='purple')
-ax3.set_xlabel("Income Levels ($)")
-ax3.set_ylabel("Tax Paid ($)")
-ax3.set_title("Tax Paid at Different Income Levels")
-st.pyplot(fig3)
+# Delete Customer Data
+st.subheader("🗑️ Delete Your Data")
+delete_id = st.text_input("Enter Customer ID to Delete Data")
+if st.button("Delete"):
+    data = load_data()
+    if delete_id in data["Customer ID"].values:
+        data = data[data["Customer ID"] != delete_id]
+        save_data(data)
+        st.success("✅ Data deleted successfully!")
+    else:
+        st.error("❌ Customer ID not found!")
