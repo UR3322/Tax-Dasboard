@@ -58,6 +58,6 @@ This project is **open-source** and available under the **MIT License**.
 ## 🤝 Contributing
 Pull requests are welcome! Feel free to **fork** this repo and submit improvements. 🚀
 
-**👨‍💻 Developed by: Abdul Samad Saleem**
+**👨‍💻 Developed by: Abdul Samad Saleem & Muhammad Usman**
 
 
