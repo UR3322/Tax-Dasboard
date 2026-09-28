@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Streamlit
+.streamlit/
+
+# Local runtime data (created when the app runs)
+customer_data.csv
